@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OnCredit – Loan Calculator</title>
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--text:#e5e7eb;--accent:#06b6d4;--good:#10b981;--bad:#ef4444;}
+    *{box-sizing:border-box}
+    body{margin:0;background:#0f172a;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    h1{font-weight:800;margin:8px 0 16px;font-size:clamp(22px,3vw,30px)}
+    .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;margin-bottom:16px}
+    .title{font-size:14px;text-transform:uppercase;letter-spacing:.12em;opacity:.7;margin-bottom:10px}
+    label{display:block;font-size:13px;opacity:.9;margin:10px 0 6px}
+    input,select{width:100%;padding:10px 12px;border:1px solid rgba(255,255,255,.12);background:#0b1220;color:var(--text);border-radius:10px;font-size:14px}
+    input:focus,select:focus{outline:none;border-color:var(--accent)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .help{font-size:12px;opacity:.7;margin-top:4px}
+    button{border:0;border-radius:12px;padding:12px 14px;background:var(--accent);color:#022;cursor:pointer;font-weight:700;transition:all .2s}
+    button:hover{opacity:.9;transform:translateY(-1px)}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--text)}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px dashed rgba(255,255,255,.12);text-align:right}
+    th:first-child,td:first-child{text-align:left}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);font-size:12px}
+    .sum{font-weight:800;font-size:18px}
+    .note{font-size:12px;opacity:.75;margin-top:12px;padding:12px;background:rgba(6,182,212,.1);border-radius:8px;border-left:3px solid var(--accent)}
+    .tab-btn{margin-right:8px;padding:8px 16px;font-size:13px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text);cursor:pointer}
+    .tab-btn.active{background:var(--accent);color:#022}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    .discount{color:var(--good);font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>OnCredit – Loan Calculator</h1>
+    <p class="sub">Promo Code = <strong>Discount %</strong> (0.3 = 30% off Service Fee)</p>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-bottom:16px">
+      <button class="tab-btn active" data-tab="calc">Calculator</button>
+      <button class="tab-btn" data-tab="rules">DPD Rules</button>
+    </div>
+
+    <!-- Calculator Tab -->
+    <div id="calc" class="tab-content active">
+      <div class="card">
+        <div class="title">Inputs</div>
+
+        <div class="row">
+          <div>
+            <label>Loan Type</label>
+            <select id="loanType">
+              <option value="new">New Loan</option>
+              <option value="repeat" selected>Repeat Loan</option>
+              <option value="prolong">Prolongation</option>
+              <option value="restructured">Restructured</option>
+            </select>
+          </div>
+          <div>
+            <label>Capital Amount (Rs)</label>
+            <input id="capital" type="number" min="100" step="100" value="10000">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Tenor (days)</label>
+            <select id="tenor">
+              <option value="10" selected>10 days</option>
+              <option value="20">20 days</option>
+              <option value="30">30 days</option>
+            </select>
+          </div>
+          <div>
+            <label>DPD (days past due)</label>
+            <input id="dpd" type="number" min="-30" value="0">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Promo Code (0.0–1.0) – DPD ≤ 2 only</label>
+            <input id="promoCode" type="number" min="0" max="1" step="0.05" placeholder="e.g. 0.3 = 30% discount" value="0.3">
+            <div class="help">0.3 = 30% <strong>discount</strong> on Service Fee</div>
+          </div>
+          <div>
+            <label>Apply DPD Promo?</label>
+            <select id="applyDpdPromo">
+              <option value="yes" selected>Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:16px">
+          <button id="calcBtn">Calculate</button>
+          <button class="secondary" id="reset">Reset</button>
+          <span class="pill">Grace: <span id="graceText">2 days</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Breakdown</div>
+        <table>
+          <tbody id="rows"></tbody>
+          <tfoot>
+            <tr><th>Total Payable</th><th class="sum" id="total">Rs 0</th></tr>
+          </tfoot>
+        </table>
+        <div class="note" id="noteText"></div>
+      </div>
+    </div>
+
+    <!-- DPD Rules Tab -->
+    <div id="rules" class="tab-content">
+      <div class="card">
+        <div class="title">Standard DPD Rules</div>
+        <table id="stdTable"></table>
+      </div>
+    </div>
+  </div>
+
+<script>
+function el(id) { return document.getElementById(id); }
+
+function currency(n) {
+  return 'Rs ' + (Math.round(n * 100) / 100).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+/* ---------- POLICY ---------- */
+const POLICY = {
+  graceDays: { new: 2, repeat: 2, prolong: 2, restructured: 0 },
+  servicePerDay: {
+    new:    {10: 1.2},
+    repeat: {10: 3.3, 20: 1.99, 30: 1.8},
+    prolong:{5: 2.45, 10: 2.25, 15: 2.10, 20: 2.0, 25: 1.85, 30: 1.75},
+    restructured: {10: 1.99, 20: 1.99, 30: 1.8}
+  }
+};
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    el(btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'rules') renderRules();
+  });
+});
+
+/* ---------- DPD RULES ---------- */
+function renderRules() {
+  const tbl = el('stdTable');
+  tbl.innerHTML = '<thead><tr><th>DPD</th><th>Rule</th></tr></thead><tbody>';
+  const rules = [
+    {range:'1-2',   rule:'100% Capital + 100% Service Fee'},
+    {range:'3-5',   rule:'100% Capital + 100% Service Fee + 100% LPF'},
+    {range:'6-15',  rule:'100% Capital + 100% Service Fee + 50% LPF'},
+    {range:'16-30', rule:'100% Capital + 100% Service Fee + 30% LPF'},
+    {range:'31-60', rule:'100% Capital + 100% Service Fee'},
+    {range:'61-90', rule:'100% Capital + 50% Service Fee'},
+    {range:'91-180',rule:'70% Capital'},
+    {range:'181+',  rule:'50% Capital'}
+  ];
+  rules.forEach(r => tbl.innerHTML += `<tr><td>${r.range}</td><td>${r.rule}</td></tr>`);
+  tbl.innerHTML += '</tbody>';
+}
+
+/* ---------- TENOR OPTIONS ---------- */
+function refreshTenor() {
+  const type = el('loanType').value;
+  const sel = el('tenor');
+  sel.innerHTML = '';
+  Object.keys(POLICY.servicePerDay[type] || {}).sort((a,b)=>a-b).forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = `${d} days`;
+    if (type === 'repeat' && d == 10) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  el('graceText').textContent = `${POLICY.graceDays[type] || 0} days`;
+}
+
+/* ---------- MAIN CALC ---------- */
+function calc() {
+  const type = el('loanType').value;
+  const capital = parseFloat(el('capital').value) || 0;
+  const tenor = parseInt(el('tenor').value, 10);
+  const dpd = parseInt(el('dpd').value, 10);
+  const discountRate = parseFloat(el('promoCode').value) || 0;   // 0.3 = 30% discount
+  const applyPromo = el('applyDpdPromo').value === 'yes';
+
+  /* Service Fee */
+  const ratePerDay = POLICY.servicePerDay[type][tenor] || 0;
+  const servicePct = ratePerDay * tenor;
+  const serviceFee = capital * servicePct / 100;
+
+  /* Discount (only DPD ≤ 2) */
+  let discountAmount = 0;
+  let note = '';
+
+  if (dpd <= 2 && applyPromo && discountRate >= 0 && discountRate <= 1) {
+    discountAmount = serviceFee * discountRate;
+    note = `Promo Code <strong>${(discountRate*100).toFixed(0)}%</strong> discount → Discount: <strong>${currency(discountAmount)}</strong>`;
+  } else if (dpd > 2) {
+    note = `<span style="color:var(--bad)">Promo blocked: DPD ${dpd} > 2</span>`;
+  } else if (discountRate > 1 || discountRate < 0) {
+    note = `<span style="color:var(--bad)">Invalid discount rate</span>`;
+  }
+
+  const total = capital + serviceFee - discountAmount;
+
+  /* Render */
+  const rows = [
+    ['Capital', currency(capital)],
+    [`Service Fee (${servicePct.toFixed(2)}%)`, currency(serviceFee)]
+  ];
+  if (discountAmount > 0) {
+    rows.push([`<span class="discount">Discount Amount</span>`, `<span class="discount">- ${currency(discountAmount)}</span>`]);
+  }
+
+  el('rows').innerHTML = rows.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  el('total').textContent = currency(total);
+  el('noteText').innerHTML = note || 'No discount applied';
+}
+
+/* ---------- EVENTS ---------- */
+el('loanType').addEventListener('change', () => { refreshTenor(); calc(); });
+['capital','tenor','dpd','promoCode','applyDpdPromo'].forEach(id => el(id).addEventListener('input', calc));
+el('calcBtn').addEventListener('click', calc);
+el('reset').addEventListener('click', () => {
+  el('loanType').value = 'repeat';
+  el('capital').value = 10000;
+  el('dpd').value = 0;
+  el('promoCode').value = 0.3;
+  el('applyDpdPromo').value = 'yes';
+  refreshTenor();
+  calc();
+});
+
+/* ---------- INIT ---------- */
+refreshTenor();
+calc();
+renderRules();
+</script>
+</body>
+</html>
